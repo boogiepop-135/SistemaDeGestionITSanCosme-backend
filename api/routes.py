@@ -15,6 +15,7 @@ import os
 from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token, get_jwt
 import base64
 import requests
+from functools import wraps
 
 api = Blueprint('api', __name__)
 
@@ -126,7 +127,7 @@ def create_item():
 
 
 @api.route('/items/<int:item_id>', methods=['GET'])
-@jwt_required
+@jwt_required()
 def get_item(item_id):
     item = Item.query.get(item_id)
     if not item:
@@ -461,21 +462,20 @@ def delete_requisition(requisition_id):
     db.session.delete(requisition)
     db.session.commit()
     return jsonify({"msg": "Requisición eliminada"}), 200
-            requested_by=data.get("requested_by"),
-            department=data.get("department"),
-            status=data.get("status", "pendiente"),
-            priority=data.get("priority", "normal"),
-            comments=data.get("comments"),
-            items=data.get("items"),
-            approval_by=data.get("approval_by"),
-            expected_date=data.get("expected_date"),
-            created_at=datetime.now(pytz.timezone(
-                "America/Mexico_City")).strftime("%Y-%m-%d %H:%M:%S")
-        )
-        db.session.add(requisition)
-        db.session.commit()
-        return jsonify(requisition.serialize()), 201
-    except Exception as e:
+
+
+# Nuevo decorador para roles usando Flask-JWT-Extended
+def jwt_required_role(roles):
+    def decorator(fn):
+        @wraps(fn)
+        @jwt_required()
+        def wrapper(*args, **kwargs):
+            identity = get_jwt_identity()
+            if not identity or identity.get("role") not in roles:
+                return jsonify({"msg": "Token inválido, expirado o sin permisos"}), 401
+            return fn(*args, **kwargs)
+        return wrapper
+    return decorator
         db.session.rollback()
         print("Error completo al crear requisición:", str(e))
         import traceback
