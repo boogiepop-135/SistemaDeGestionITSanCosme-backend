@@ -41,7 +41,6 @@ def jwt_required_role(roles):
 # Puedes mover esto a una variable de entorno si lo deseas
 SECRET_KEY = "super-secret-key"
 
-
 # Usuarios permitidos (ejemplo, deberías migrar a la base de datos)
 valid_users = {
     "Levi": {"password": generate_password_hash("BM56Oi3QdUxtFoAWrJMK"), "role": "admin"},
@@ -49,7 +48,6 @@ valid_users = {
     "JRQ": {"password": generate_password_hash("i1hOHoz7YHwb6WTZfMgI"), "role": "usuario"},
     "sccs": {"password": generate_password_hash("NXxwhV9xKrkPQTbJtAKC"), "role": "usuario"}
 }
-
 
 @api.route('/login', methods=['POST'])
 def login():
@@ -62,16 +60,12 @@ def login():
         return jsonify({"token": access_token, "role": user["role"]}), 200
     return jsonify({"msg": "Credenciales inválidas"}), 401
 
-
 @api.route('/hello', methods=['POST', 'GET'])
 def handle_hello():
-
     response_body = {
         "message": "Hello! I'm a message that came from the backend, check the network tab on the google inspector and you will see the GET request"
     }
-
     return jsonify(response_body), 200
-
 
 # --- Endpoints protegidos ---
 @api.route("/items", methods=["GET"])
@@ -84,9 +78,6 @@ def get_items():
         import traceback
         print("Error en /api/items:", traceback.format_exc())
         return jsonify({"message": str(e)}), 500
-
-    return jsonify(item.serialize()), 200
-
 
 @api.route("/items", methods=["POST"])
 @jwt_required()
@@ -138,7 +129,6 @@ def create_item():
         db.session.rollback()
         return jsonify({"message": str(e)}), 400
 
-
 @api.route('/items/<int:item_id>', methods=['GET'])
 @jwt_required()
 def get_item(item_id):
@@ -146,7 +136,6 @@ def get_item(item_id):
     if not item:
         return jsonify({"msg": "Item not found"}), 404
     return jsonify(item.serialize()), 200
-
 
 @api.route('/items/<int:item_id>', methods=['PUT'])
 @jwt_required_role(["admin"])
@@ -170,7 +159,6 @@ def update_item(item_id):
     db.session.commit()
     return jsonify(item.serialize()), 200
 
-
 @api.route('/items/<int:item_id>', methods=['DELETE'])
 @jwt_required()
 def delete_item(item_id):
@@ -180,7 +168,6 @@ def delete_item(item_id):
     db.session.delete(item)
     db.session.commit()
     return jsonify({"msg": "Item deleted"}), 200
-
 
 @api.route('/tickets', methods=['GET'])
 @jwt_required()
@@ -193,7 +180,6 @@ def get_tickets():
         print("Error en /api/tickets:", traceback.format_exc())
         return jsonify({"message": str(e)}), 500
 
-
 @api.route('/tickets/<int:ticket_id>', methods=['GET'])
 @jwt_required()
 def get_ticket(ticket_id):
@@ -204,7 +190,6 @@ def get_ticket(ticket_id):
         return jsonify(ticket.serialize()), 200
     except Exception as e:
         return jsonify({"msg": str(e)}), 500
-
 
 @api.route('/tickets', methods=['POST'])
 @jwt_required()
@@ -257,7 +242,6 @@ def create_ticket():
         print("Traceback:", traceback.format_exc())
         return jsonify({"msg": str(e)}), 400
 
-
 @api.route('/tickets/<int:ticket_id>', methods=['PUT'])
 @jwt_required_role(["admin"])
 def update_ticket(ticket_id):
@@ -278,7 +262,6 @@ def update_ticket(ticket_id):
     db.session.commit()
     return jsonify(ticket.serialize()), 200
 
-
 @api.route('/tickets/<int:ticket_id>', methods=['DELETE'])
 @jwt_required()
 def delete_ticket(ticket_id):
@@ -288,7 +271,6 @@ def delete_ticket(ticket_id):
     db.session.delete(ticket)
     db.session.commit()
     return jsonify({"msg": "Ticket deleted"}), 200
-
 
 @api.route('/users', methods=['POST'])
 @jwt_required_role(["admin"])
@@ -307,7 +289,6 @@ def create_user():
     }
     return jsonify({"msg": "Usuario creado", "username": username, "role": role}), 201
 
-
 @api.route('/users/<username>', methods=['DELETE'])
 @jwt_required_role(["admin"])
 def delete_user(username):
@@ -318,7 +299,6 @@ def delete_user(username):
     del valid_users[username]
     return jsonify({"msg": f"Usuario {username} eliminado"}), 200
 
-
 @api.route('/users', methods=['GET'])
 @jwt_required_role(["admin"])
 def list_users():
@@ -327,7 +307,6 @@ def list_users():
         {"username": k, "role": v["role"]}
         for k, v in valid_users.items()
     ]), 200
-
 
 @api.route('/users/<username>', methods=['PUT'])
 @jwt_required_role(["admin"])
@@ -344,13 +323,11 @@ def edit_user(username):
         valid_users[username]["role"] = data["role"]
     return jsonify({"msg": f"Usuario {username} actualizado"}), 200
 
-
 # Ejemplo de uso: != "admin":
 @api.route('/admin-only', methods=['GET'])
 @jwt_required_role(["admin"])
 def admin_only():
     return jsonify({"msg": "Solo admins pueden ver esto"}), 200
-
 
 @api.route('/items/export', methods=['GET'])
 @jwt_required()
@@ -363,7 +340,6 @@ def export_items_excel():
     output.seek(0)
     return send_file(output, download_name="inventario.xlsx", as_attachment=True, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-
 @api.route('/tickets/export', methods=['GET'])
 @jwt_required()
 def export_tickets_excel():
@@ -374,7 +350,6 @@ def export_tickets_excel():
     df.to_excel(output, index=False, engine='openpyxl')
     output.seek(0)
     return send_file(output, download_name="tickets.xlsx", as_attachment=True, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-
 
 # Rutas para requisiciones
 @api.route('/requisitions', methods=['GET'])
@@ -387,7 +362,6 @@ def get_requisitions():
     except Exception as e:
         return jsonify({"message": str(e)}), 500
 
-
 @api.route('/requisitions/<int:requisition_id>', methods=['GET'])
 @jwt_required()
 def get_requisition(requisition_id):
@@ -398,7 +372,6 @@ def get_requisition(requisition_id):
         return jsonify(requisition.serialize()), 200
     except Exception as e:
         return jsonify({"msg": str(e)}), 500
-
 
 @api.route('/requisitions', methods=['POST'])
 @jwt_required()
@@ -442,7 +415,6 @@ def create_requisition():
         print("Traceback:", traceback.format_exc())
         return jsonify({"msg": str(e)}), 400
 
-
 @api.route('/requisitions/<int:requisition_id>', methods=['PUT'])
 @jwt_required_role(["admin"])
 def update_requisition(requisition_id):
@@ -465,57 +437,12 @@ def update_requisition(requisition_id):
     db.session.commit()
     return jsonify(requisition.serialize()), 200
 
-
 @api.route('/requisitions/<int:requisition_id>', methods=['DELETE'])
 @jwt_required_role(["admin"])
 def delete_requisition(requisition_id):
     requisition = Requisition.query.get(requisition_id)
     if not requisition:
         return jsonify({"msg": "Requisición no encontrada"}), 404
-    db.session.delete(requisition)
-    db.session.commit()
-    return jsonify({"msg": "Requisición eliminada"}), 200
-    return decorator
-        db.session.rollback()
-        print("Error completo al crear requisición:", str(e))
-        import traceback
-        print("Traceback:", traceback.format_exc())
-        return jsonify({"msg": str(e)}), 400
-
-
-@api.route('/requisitions/<int:requisition_id>', methods=['PUT'])
-@jwt_required_role(["admin"])
-def update_requisition(requisition_id):
-    requisition = Requisition.query.get(requisition_id)
-    if not requisition:
-        return jsonify({"msg": "Requisición no encontrada"}), 404
-    data = request.json
-    requisition.title = data.get("title", requisition.title)
-    requisition.description = data.get("description", requisition.description)
-    requisition.requested_by = data.get(
-        "requested_by", requisition.requested_by)
-    requisition.department = data.get("department", requisition.department)
-    requisition.status = data.get("status", requisition.status)
-    requisition.priority = data.get("priority", requisition.priority)
-    requisition.comments = data.get("comments", requisition.comments)
-    requisition.items = data.get("items", requisition.items)
-    requisition.approval_by = data.get("approval_by", requisition.approval_by)
-    requisition.expected_date = data.get(
-        "expected_date", requisition.expected_date)
-    db.session.commit()
-    return jsonify(requisition.serialize()), 200
-
-
-@api.route('/requisitions/<int:requisition_id>', methods=['DELETE'])
-@jwt_required_role(["admin"])
-def delete_requisition(requisition_id):
-    requisition = Requisition.query.get(requisition_id)
-    if not requisition:
-        return jsonify({"msg": "Requisición no encontrada"}), 404
-    db.session.delete(requisition)
-    db.session.commit()
-    return jsonify({"msg": "Requisición eliminada"}), 200
-    return jsonify({"msg": "Requisición no encontrada"}), 404
     db.session.delete(requisition)
     db.session.commit()
     return jsonify({"msg": "Requisición eliminada"}), 200
