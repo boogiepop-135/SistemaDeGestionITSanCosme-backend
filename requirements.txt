@@ -1,0 +1,26 @@
+-i https://pypi.org/simple
+alembic
+certifi
+click
+cloudinary
+flask
+flask-admin
+flask-cors
+flask-migrate
+flask-sqlalchemy
+flask-swagger
+gunicorn
+itsdangerous
+jinja2
+mako
+markupsafe
+psycopg2-binary
+python-dateutil
+python-dotenv
+python-editor
+pyyaml
+six
+sqlalchemy
+urllib3
+werkzeug
+wtforms
