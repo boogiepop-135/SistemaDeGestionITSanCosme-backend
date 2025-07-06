@@ -25,6 +25,19 @@ CORS(api, resources={r"/api/*": {"origins": [
     "https://soporteches.netlify.app"
 ]}})
 
+# Decorador para roles usando Flask-JWT-Extended
+def jwt_required_role(roles):
+    def decorator(fn):
+        @wraps(fn)
+        @jwt_required()
+        def wrapper(*args, **kwargs):
+            identity = get_jwt_identity()
+            if not identity or identity.get("role") not in roles:
+                return jsonify({"msg": "Token inválido, expirado o sin permisos"}), 401
+            return fn(*args, **kwargs)
+        return wrapper
+    return decorator
+
 # Puedes mover esto a una variable de entorno si lo deseas
 SECRET_KEY = "super-secret-key"
 
@@ -462,19 +475,6 @@ def delete_requisition(requisition_id):
     db.session.delete(requisition)
     db.session.commit()
     return jsonify({"msg": "Requisición eliminada"}), 200
-
-
-# Nuevo decorador para roles usando Flask-JWT-Extended
-def jwt_required_role(roles):
-    def decorator(fn):
-        @wraps(fn)
-        @jwt_required()
-        def wrapper(*args, **kwargs):
-            identity = get_jwt_identity()
-            if not identity or identity.get("role") not in roles:
-                return jsonify({"msg": "Token inválido, expirado o sin permisos"}), 401
-            return fn(*args, **kwargs)
-        return wrapper
     return decorator
         db.session.rollback()
         print("Error completo al crear requisición:", str(e))
