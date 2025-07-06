@@ -12,7 +12,7 @@ import pytz
 import pandas as pd
 from io import BytesIO
 import os
-from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token
+from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token, get_jwt
 import base64
 import requests
 
@@ -37,15 +37,6 @@ valid_users = {
 }
 
 
-def generate_token(username, role):
-    payload = {
-        "sub": username,
-        "role": role,
-        "exp": datetime.utcnow() + timedelta(hours=8)
-    }
-    return jwt.encode(payload, SECRET_KEY, algorithm="HS256")
-
-
 @api.route('/login', methods=['POST'])
 def login():
     data = request.json
@@ -53,51 +44,9 @@ def login():
     password = data.get("password")
     user = valid_users.get(username)
     if user and check_password_hash(user["password"], password):
-        token = generate_token(username, user["role"])
-        return jsonify({"token": token, "role": user["role"]}), 200
+        access_token = create_access_token(identity={"username": username, "role": user["role"]})
+        return jsonify({"token": access_token, "role": user["role"]}), 200
     return jsonify({"msg": "Credenciales inválidas"}), 401
-
-
-def verify_token(token):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-        return payload["sub"], payload["role"]
-    except Exception:
-        return None, None
-
-
-def jwt_required(fn):
-    from functools import wraps
-
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        auth = request.headers.get("Authorization", None)
-        if not auth or not auth.startswith("Bearer "):
-            return jsonify({"msg": "Token requerido"}), 401
-        token = auth.split(" ")[1]
-        user, role = verify_token(token)
-        if not user:
-            return jsonify({"msg": "Token inválido o expirado"}), 401
-        return fn(*args, **kwargs)
-    return wrapper
-
-
-def jwt_required_role(roles):
-    def decorator(fn):
-        from functools import wraps
-
-        @wraps(fn)
-        def wrapper(*args, **kwargs):
-            auth = request.headers.get("Authorization", None)
-            if not auth or not auth.startswith("Bearer "):
-                return jsonify({"msg": "Token requerido"}), 401
-            token = auth.split(" ")[1]
-            user, role = verify_token(token)
-            if not user or role not in roles:
-                return jsonify({"msg": "Token inválido, expirado o sin permisos"}), 401
-            return fn(*args, **kwargs)
-        return wrapper
-    return decorator
 
 
 @api.route('/hello', methods=['POST', 'GET'])
@@ -112,13 +61,10 @@ def handle_hello():
 
 # --- Endpoints protegidos ---
 @api.route("/items", methods=["GET"])
-@jwt_required
+@jwt_required()
 def get_items():
     try:
         items = Item.query.all()
-        for item in items:
-            # Esto mostrará en consola si hay error en algún item
-            print(item.serialize())
         return jsonify([item.serialize() for item in items]), 200
     except Exception as e:
         import traceback
@@ -129,7 +75,7 @@ def get_items():
 
 
 @api.route("/items", methods=["POST"])
-@jwt_required
+@jwt_required()
 def create_item():
     try:
         data = request.get_json()
@@ -212,7 +158,7 @@ def update_item(item_id):
 
 
 @api.route('/items/<int:item_id>', methods=['DELETE'])
-@jwt_required
+@jwt_required()
 def delete_item(item_id):
     item = Item.query.get(item_id)
     if not item:
@@ -223,7 +169,7 @@ def delete_item(item_id):
 
 
 @api.route('/tickets', methods=['GET'])
-@jwt_required
+@jwt_required()
 def get_tickets():
     try:
         tickets = Ticket.query.order_by(Ticket.created_at.desc()).all()
@@ -235,7 +181,7 @@ def get_tickets():
 
 
 @api.route('/tickets/<int:ticket_id>', methods=['GET'])
-@jwt_required
+@jwt_required()
 def get_ticket(ticket_id):
     try:
         ticket = Ticket.query.get(ticket_id)
@@ -247,7 +193,7 @@ def get_ticket(ticket_id):
 
 
 @api.route('/tickets', methods=['POST'])
-@jwt_required
+@jwt_required()
 def create_ticket():
     try:
         if not request.is_json:
@@ -320,7 +266,7 @@ def update_ticket(ticket_id):
 
 
 @api.route('/tickets/<int:ticket_id>', methods=['DELETE'])
-@jwt_required
+@jwt_required()
 def delete_ticket(ticket_id):
     ticket = Ticket.query.get(ticket_id)
     if not ticket:
@@ -393,7 +339,7 @@ def admin_only():
 
 
 @api.route('/items/export', methods=['GET'])
-@jwt_required
+@jwt_required()
 def export_items_excel():
     items = Item.query.all()
     data = [item.serialize() for item in items]
@@ -405,7 +351,7 @@ def export_items_excel():
 
 
 @api.route('/tickets/export', methods=['GET'])
-@jwt_required
+@jwt_required()
 def export_tickets_excel():
     tickets = Ticket.query.all()
     data = [ticket.serialize() for ticket in tickets]
@@ -418,7 +364,7 @@ def export_tickets_excel():
 
 # Rutas para requisiciones
 @api.route('/requisitions', methods=['GET'])
-@jwt_required
+@jwt_required()
 def get_requisitions():
     try:
         requisitions = Requisition.query.order_by(
@@ -429,7 +375,7 @@ def get_requisitions():
 
 
 @api.route('/requisitions/<int:requisition_id>', methods=['GET'])
-@jwt_required
+@jwt_required()
 def get_requisition(requisition_id):
     try:
         requisition = Requisition.query.get(requisition_id)
@@ -441,7 +387,7 @@ def get_requisition(requisition_id):
 
 
 @api.route('/requisitions', methods=['POST'])
-@jwt_required
+@jwt_required()
 def create_requisition():
     try:
         if not request.is_json:
@@ -461,6 +407,60 @@ def create_requisition():
         requisition = Requisition(
             title=str(title).strip(),
             description=str(description).strip(),
+            requested_by=data.get("requested_by"),
+            department=data.get("department"),
+            status=data.get("status", "pendiente"),
+            priority=data.get("priority", "normal"),
+            comments=data.get("comments"),
+            items=data.get("items"),
+            approval_by=data.get("approval_by"),
+            expected_date=data.get("expected_date"),
+            created_at=datetime.now(pytz.timezone(
+                "America/Mexico_City")).strftime("%Y-%m-%d %H:%M:%S")
+        )
+        db.session.add(requisition)
+        db.session.commit()
+        return jsonify(requisition.serialize()), 201
+    except Exception as e:
+        db.session.rollback()
+        print("Error completo al crear requisición:", str(e))
+        import traceback
+        print("Traceback:", traceback.format_exc())
+        return jsonify({"msg": str(e)}), 400
+
+
+@api.route('/requisitions/<int:requisition_id>', methods=['PUT'])
+@jwt_required_role(["admin"])
+def update_requisition(requisition_id):
+    requisition = Requisition.query.get(requisition_id)
+    if not requisition:
+        return jsonify({"msg": "Requisición no encontrada"}), 404
+    data = request.json
+    requisition.title = data.get("title", requisition.title)
+    requisition.description = data.get("description", requisition.description)
+    requisition.requested_by = data.get(
+        "requested_by", requisition.requested_by)
+    requisition.department = data.get("department", requisition.department)
+    requisition.status = data.get("status", requisition.status)
+    requisition.priority = data.get("priority", requisition.priority)
+    requisition.comments = data.get("comments", requisition.comments)
+    requisition.items = data.get("items", requisition.items)
+    requisition.approval_by = data.get("approval_by", requisition.approval_by)
+    requisition.expected_date = data.get(
+        "expected_date", requisition.expected_date)
+    db.session.commit()
+    return jsonify(requisition.serialize()), 200
+
+
+@api.route('/requisitions/<int:requisition_id>', methods=['DELETE'])
+@jwt_required_role(["admin"])
+def delete_requisition(requisition_id):
+    requisition = Requisition.query.get(requisition_id)
+    if not requisition:
+        return jsonify({"msg": "Requisición no encontrada"}), 404
+    db.session.delete(requisition)
+    db.session.commit()
+    return jsonify({"msg": "Requisición eliminada"}), 200
             requested_by=data.get("requested_by"),
             department=data.get("department"),
             status=data.get("status", "pendiente"),
