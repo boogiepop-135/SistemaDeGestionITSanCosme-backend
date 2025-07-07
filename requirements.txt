@@ -21,6 +21,7 @@ python-dotenv
 python-editor
 pyjwt
 pyyaml
+requests
 six
 sqlalchemy
 urllib3
