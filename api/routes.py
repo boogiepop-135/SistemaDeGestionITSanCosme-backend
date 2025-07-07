@@ -195,9 +195,20 @@ def get_ticket(ticket_id):
 @jwt_required()
 def create_ticket():
     try:
+        # Log para depuración
+        print("Headers recibidos:", dict(request.headers))
+        print("request.data:", request.data)
+        print("request.get_json(silent=True):", request.get_json(silent=True))
+
         if not request.is_json:
+            print("El Content-Type no es application/json o el cuerpo no es JSON válido")
             return jsonify({"msg": "El Content-Type debe ser application/json"}), 415
-        data = request.json
+
+        data = request.get_json(force=True, silent=True)
+        if data is None:
+            print("No se pudo decodificar el JSON")
+            print("request.data:", request.data)
+            return jsonify({"msg": "No se pudo decodificar el JSON"}), 422
 
         # Debug: imprimir los datos recibidos
         print("Datos recibidos para crear ticket:", data)
