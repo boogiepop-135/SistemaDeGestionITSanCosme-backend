@@ -90,7 +90,12 @@ def get_items():
 @jwt_required()
 def create_item():
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
+        # Validar campos requeridos para crear un item
+        subject = data.get("subject")
+        if not isinstance(subject, str):
+            return jsonify({"msg": "Subject must be a string"}), 422
+
         image_data = data.pop('image', None)
 
         # Crear el item primero

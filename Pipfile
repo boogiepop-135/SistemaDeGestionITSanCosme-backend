@@ -1,0 +1,41 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+alembic = "*"
+certifi = "*"
+click = "*"
+cloudinary = "*"
+flask = "*"
+flask-admin = "*"
+flask-cors = "*"
+flask-jwt-extended = "*"
+flask-migrate = "*"
+flask-sqlalchemy = "*"
+flask-swagger = "*"
+gunicorn = "*"
+itsdangerous = "*"
+jinja2 = "*"
+mako = "*"
+markupsafe = "*"
+psycopg2-binary = "*"
+python-dateutil = "*"
+python-dotenv = "*"
+python-editor = "*"
+pyjwt = "*"
+pyyaml = "*"
+requests = "*"
+six = "*"
+sqlalchemy = "*"
+urllib3 = "*"
+werkzeug = "*"
+wtforms = "*"
+pytz = "*"
+pandas = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.12"
