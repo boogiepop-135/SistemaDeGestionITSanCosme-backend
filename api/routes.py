@@ -51,13 +51,20 @@ valid_users = {
 
 @api.route('/login', methods=['POST'])
 def login():
-    data = request.json
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"msg": "Debes enviar username y password en formato JSON"}), 400
+
     username = data.get("username")
     password = data.get("password")
+    if not username or not password:
+        return jsonify({"msg": "Usuario y contraseña requeridos"}), 400
+
     user = valid_users.get(username)
     if user and check_password_hash(user["password"], password):
         access_token = create_access_token(identity={"username": username, "role": user["role"]})
         return jsonify({"token": access_token, "role": user["role"]}), 200
+
     return jsonify({"msg": "Credenciales inválidas"}), 401
 
 @api.route('/hello', methods=['POST', 'GET'])
@@ -195,51 +202,44 @@ def get_ticket(ticket_id):
 @jwt_required()
 def create_ticket():
     try:
-        # Log para depuración
-        print("Headers recibidos:", dict(request.headers))
-        print("request.data:", request.data)
-        print("request.get_json(silent=True):", request.get_json(silent=True))
-
         if not request.is_json:
-            print("El Content-Type no es application/json o el cuerpo no es JSON válido")
             return jsonify({"msg": "El Content-Type debe ser application/json"}), 415
-
-        data = request.get_json(force=True, silent=True)
+        data = request.get_json(silent=True)
         if data is None:
-            print("No se pudo decodificar el JSON")
-            print("request.data:", request.data)
             return jsonify({"msg": "No se pudo decodificar el JSON"}), 422
 
-        # Debug: imprimir los datos recibidos
-        print("Datos recibidos para crear ticket:", data)
-
-        # Validar campos requeridos con menos restricciones
+        # Validar campos requeridos
         description = data.get("description")
-        if description is None:
-            return jsonify({"msg": "La descripción es requerida"}), 400
+        branch = data.get("branch")
+        department = data.get("department")
+        priority = data.get("priority")
+        incident_type = data.get("incident_type")
+        # Validación básica
+        if not description or not branch or not department or not priority or not incident_type:
+            return jsonify({"msg": "Faltan campos requeridos"}), 400
 
-        # Convertir a string y limpiar espacios
-        description = str(description).strip(
-        ) if description is not None else ""
+        # Limpiar y autogenerar campos
+        description = str(description).strip()
         if description == "":
             return jsonify({"msg": "La descripción no puede estar vacía"}), 400
 
-        # Si no se recibe 'title', genera uno automático
         title = data.get("title")
         if not title or str(title).strip() == "":
             title = f"Ticket {datetime.now(pytz.timezone('America/Mexico_City')).strftime('%Y-%m-%d %H:%M:%S')}"
+        else:
+            title = str(title).strip()
 
         ticket = Ticket(
-            title=str(title).strip(),
+            title=title,
             description=description,
-            item_id=data.get("item_id"),
+            item_id=data.get("item_id") if data.get("item_id") not in ["", None] else None,
             status=data.get("status", "pendiente"),
-            created_by=data.get("created_by"),
-            branch=data.get("branch"),
-            department=data.get("department"),
-            priority=data.get("priority", "normal"),
-            comments=data.get("comments"),
-            incident_type=data.get("incident_type"),
+            created_by=data.get("created_by", ""),
+            branch=branch,
+            department=department,
+            priority=priority,
+            comments=data.get("comments", ""),
+            incident_type=incident_type,
             created_at=datetime.now(pytz.timezone(
                 "America/Mexico_City")).strftime("%Y-%m-%d %H:%M:%S")
         )
@@ -248,8 +248,8 @@ def create_ticket():
         return jsonify(ticket.serialize()), 201
     except Exception as e:
         db.session.rollback()
-        print("Error completo al crear ticket:", str(e))
         import traceback
+        print("Error completo al crear ticket:", str(e))
         print("Traceback:", traceback.format_exc())
         return jsonify({"msg": str(e)}), 400
 

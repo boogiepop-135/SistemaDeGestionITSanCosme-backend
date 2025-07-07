@@ -130,12 +130,18 @@ class Ticket(db.Model):
     incident_type: Mapped[str] = mapped_column(String(50), nullable=True)
 
     def serialize(self):
+        # Mapear status para el frontend
+        status_map = {
+            "pendiente": "abierto",
+            "en_proceso": "en_proceso",
+            "solucionado": "cerrado"
+        }
         return {
             "id": self.id,
             "title": self.title,
             "description": self.description,
             "item_id": self.item_id,
-            "status": self.status,
+            "status": status_map.get(self.status, self.status),
             "created_by": self.created_by,
             "branch": self.branch,
             "department": self.department,
